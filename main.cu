@@ -12,6 +12,8 @@ int main(int argc, char ** argv){
 	char *mode;
 	mode = (char *) malloc(strlen(argv[1])+1);
 	strcpy(mode, argv[1]);
+	char cpu[4] = "cpu";
+	char gpu[4] = "gpu";
 
 	int n = atoi(argv[2]);
 	int matDim = pow(2,n) + 1;
@@ -26,13 +28,15 @@ int main(int argc, char ** argv){
 
 	/*-------------CPU MODE--------------------*/
 
-	if(strcmp(mode,"cpu")){
+	if(strcmp(mode,cpu) == 0){
+		initTime();
 		diamontCPU(matDim, matDim, data);
+		printf("%d\t time cpu : %F\n", nbMatEl, getTime());
 	}
 
 	/*-------------GPU MODE--------------------*/
 
-	if(strcmp(mode,"gpu")){
+	if(strcmp(mode,gpu) == 0){
 
 		/*mat profondeur*/
 		tabDepth = (unsigned char *) calloc(matDim * matDim, sizeof *tabDepth);
@@ -43,8 +47,8 @@ int main(int argc, char ** argv){
 		initArrays(tabDepth, _tabParents, matDim, matDim);
 
 		/*Affichage profondeur*/
-		char matProfName[] = "profondeur";
-		displayMat(tabDepth, matProfName, matDim);	
+		// char matProfName[] = "profondeur";
+		// displayMat(tabDepth, matProfName, matDim);	
 
 		cudaMalloc(&devData, nbMatEl* sizeof *devData);
 		cudaMalloc(&devTabDepth, nbMatEl* sizeof *devTabDepth);
@@ -60,16 +64,18 @@ int main(int argc, char ** argv){
 		int th = _maxProf;
 		dim3 dimBlock(th, th, 1);
 		dim3 dimGrid((matDim / dimBlock.x)+1, (matDim / dimBlock.y)+1, 1);
-
-		for(int i = 0; i<=_maxProf; i++) {
+		
+		initTime();
+		for(int i = 0; i<=_maxProf; ++i){
 			diamont<<<dimGrid, dimBlock, 0>>>(devData, devTabDepth, dev_tabParents, i, matDim);
 		}
+		printf("%d\t time gpu : %F\n", nbMatEl, getTime());
 
 		cudaMemcpy(data, devData, nbMatEl* sizeof *data, cudaMemcpyDeviceToHost);
 	}
 
-	char matDatasName[] = "datas";
-    displayMat(data, matDatasName, matDim);
+	// char matDatasName[] = "datas";
+    // displayMat(data, matDatasName, matDim);
 	
 	return 0;
 }

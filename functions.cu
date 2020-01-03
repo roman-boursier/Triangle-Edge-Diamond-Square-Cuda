@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+
+static struct timeval ti;
 
 bool IN(int x, int y, int w, int h) {
 	return (x) >= 0 && (y) >= 0 && (x) < (w) && (y) < (h);
@@ -217,4 +220,17 @@ __global__ void diamont(unsigned char * data, unsigned char * tabDepth, int4 * _
 		
 		(nbPar == 0) ? data[ThId] = 1 : data[ThId] /= nbPar;
 	}
+}
+
+void initTime(void) {
+    gettimeofday(&ti, (struct timezone*) 0);
+}
+
+double getTime(void) {
+    struct timeval t;
+    double diff;
+    gettimeofday(&t, (struct timezone*) 0);
+    diff = (t.tv_sec - ti.tv_sec) * 1000000
+    + (t.tv_usec - ti.tv_usec);
+    return diff/1000.;
 }
