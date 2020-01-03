@@ -39,7 +39,7 @@ void initArrays(unsigned char * _tabDepth, int4 * _tabParents, int w, int h) {
 				_tabParents[y * w + x].x = (y - sh2) * w + x - sw2;
  				_tabParents[y * w + x].y = (y - sh2) * w + x + sw2;
  				_tabParents[y * w + x].z = (y + sh2) * w + x + sw2;
- 				_tabParents[y * w + x].w = (y + sh2) * w + x - sw2;
+				_tabParents[y * w + x].w = (y + sh2) * w + x - sw2;
  			}
 
 		}
@@ -109,6 +109,90 @@ void initArrays(unsigned char * _tabDepth, int4 * _tabParents, int w, int h) {
 			
 		}
 		niveau ++;
+		sw1 = sw2;
+		sw2 >>= 1;
+		sh1 = sh2;
+		sh2 >>= 1;
+	}
+}
+
+void diamontCPU(int w, int h, unsigned char * data) {
+	int sw1 = w - 1, sw2 = sw1 >> 1;
+	int sh1 = h - 1, sh2 = sh1 >> 1;
+
+	while(sw2){
+		for(int y = sh2; y < h; y += sh1){
+			for(int x = sw2; x < w; x += sw1){
+				if(data[y * w + x]) continue;
+
+				data[y * w + x] = (data[(y - sh2) * w + x - sw2] +
+				data[(y - sh2) * w + x + sw2] +
+				data[(y + sh2) * w + x + sw2] +
+				data[(y + sh2) * w + x - sw2]) >> 2;
+ 			}
+		}
+
+		for(int y = 0; y < h; y += sh1){
+			for(int x = sw2; x < w; x += sw1){
+				int yp, xp;
+				int nbp = 0, v = 0;
+
+				if(data[y * w + x]) continue;
+				yp = y - sh2; xp = x; // parent haut
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				}
+
+				yp = y; xp = x + sw2; // parent droit
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				}
+				yp = y + sh2; xp = x; // parent bas
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				}
+				yp = y; xp = x - sw2; // parent gauche
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				} 
+				data[y * w + x] = v / nbp;
+ 			}	
+		}
+		for(int y = sh2; y < h; y += sh1){
+			for(int x = 0; x < w; x += sw1){
+				int yp, xp;
+				int nbp = 0, v = 0;
+
+				if(data[y * w + x]) continue;
+				yp = y - sh2; xp = x; // parent haut
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				}
+				yp = y; xp = x + sw2; // parent droit
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				}
+				yp = y + sh2; xp = x; // parent bas
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				}
+
+				yp = y; xp = x - sw2; // parent gauche
+				if(IN(xp, yp, w, h)){
+					++nbp;
+					v += data[yp * w + xp] ;
+				}
+				data[y * w + x] = v / nbp;
+ 			}
+			
+		}
 		sw1 = sw2;
 		sw2 >>= 1;
 		sh1 = sh2;
