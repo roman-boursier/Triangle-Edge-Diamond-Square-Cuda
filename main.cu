@@ -46,7 +46,7 @@ int main(int argc, char ** argv){
 	if(strcmp(mode,cpu) == 0){
 		initTime();
 		diamontCPU(matDim, matDim, data);
-		printf("%d\t time cpu : %F\n", nbMatEl, getTime());
+		printf("%d\t%F\n", n, getTime());
 	}
 
 	/*-------------GPU MODE--------------------*/
@@ -76,7 +76,7 @@ int main(int argc, char ** argv){
 		cudaMemcpy(d_input, img.ptr(), grayBytes, cudaMemcpyHostToDevice);
 		
 		int _maxProf = maxProf(tabDepth, matDim);
-		printf("Max %d\n", _maxProf);
+		// printf("Max %d\n", _maxProf);
 
 		int th = _maxProf;
 		dim3 dimBlock(th, th, 1);
@@ -84,19 +84,20 @@ int main(int argc, char ** argv){
 		
 		initTime();
 		for(int i = 0; i<=_maxProf; ++i){
-			//diamont<<<dimGrid, dimBlock, 0>>>(devData, devTabDepth, dev_tabParents, i, matDim);
-			diamontImg<<<dimGrid, dimBlock, 0>>>(devData, d_img, devTabDepth, dev_tabParents, i, matDim);
+			diamont<<<dimGrid, dimBlock, 0>>>(devData, devTabDepth, dev_tabParents, i, matDim);
+			//diamontImg<<<dimGrid, dimBlock, 0>>>(devData, d_img, devTabDepth, dev_tabParents, i, matDim);
 		}
-		printf("%d\t time gpu : %F\n", nbMatEl, getTime());
+		printf("%d\t%F\n", n, getTime());
+		//printf("%d\t time gpu : %F\n", nbMatEl, getTime());
 
 		cudaMemcpy(data, devData, nbMatEl* sizeof *data, cudaMemcpyDeviceToHost);
 		cudaMemcpy(img.ptr(), d_img, grayBytes, cudaMemcpyDeviceToHost);
 
-		cv::imwrite(filename, img);
+		//cv::imwrite(filename, img);
 	}
 
-	char matDatasName[] = "datas";
-	displayMat(data, matDatasName, matDim);
+	// char matDatasName[] = "datas";
+	// displayMat(data, matDatasName, matDim);
 	
 	return 0;
 }
