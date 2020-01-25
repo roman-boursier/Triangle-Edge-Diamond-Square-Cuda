@@ -2,4 +2,4 @@ Comparatif CPU/GPU des implémations séquentielles (CPU) et parallèles (CUDA) 
 
 <h1>Usage</h1>
 make
-./main {cpu|gpu} {n} {filename.png}
+main {cpu|gpu} {te|ds} {n} {filename.png}
