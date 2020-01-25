@@ -30,7 +30,7 @@ void displayMat(unsigned char * arr, char * name, int matDim){
 	printf("\n");	
 }
 
-void initArrays(unsigned char * _tabDepth, int4 * _tabParents, int w, int h) {
+void initArraysDs(unsigned char * _tabDepth, int4 * _tabParents, int w, int h) {
 	int sw1 = w - 1, sw2 = sw1 >> 1;
 	int sh1 = h - 1, sh2 = sh1 >> 1;
 	int niveau = 1;
@@ -119,6 +119,81 @@ void initArrays(unsigned char * _tabDepth, int4 * _tabParents, int w, int h) {
 	}
 }
 
+void initArraysTe(unsigned char * _tabDepth, int4 * _tabParents, int x0, int y0, int stride, int sx, int sy, int p) {
+	int w_2 = sx >> 1, h_2 = sy >> 1, j;
+    int x[9] = { x0, x0 + sx, x0 + sx,
+    x0, x0 + w_2, x0 + sx, x0 + w_2,
+    x0, x0 + w_2 };
+    int y[9] = { y0,
+    y0, y0 + sy, y0 + sy,
+    y0, y0 + h_2, y0 + sy, y0 + h_2, y0 + h_2 };
+
+    for(int i = 0, i1 = 1; i < 4; ++i, i1 = (i1 + 1) % 4) {
+		if(_tabDepth[j = y[i + 4] * stride + x[i + 4]]) continue;
+			//Parents			
+			_tabParents[j].x = y[i] * stride + x[i];
+			_tabParents[j].y = y[i1] * stride + x[i1];
+			_tabParents[j].z = -1;
+			_tabParents[j].w = -1;
+			//prof
+			_tabDepth[j] = p;
+        }
+
+		if(!_tabDepth[j = y[8] * stride + x[8]]) {
+            for(int i = 0; i < 4; ++i) {
+				//prof
+				_tabDepth[j] = p;
+				//Tab parent
+				if(i == 1){
+					_tabParents[j].x = y[i] * stride + x[i];
+				} else if(i == 2){
+					_tabParents[j].y = y[i] * stride + x[i];
+				} else if(i == 3) {
+					_tabParents[j].z = y[i] * stride + x[i];
+				} else {
+					_tabParents[j].w = y[i] * stride + x[i];
+				}
+			}
+			
+        }
+        if(w_2 > 1) {
+            initArraysTe(_tabDepth, _tabParents, x[0], y[0], stride, w_2, h_2, ++p);
+            initArraysTe(_tabDepth, _tabParents, x[4], y[4], stride, w_2, h_2, p);
+            initArraysTe(_tabDepth, _tabParents, x[8], y[8], stride, w_2, h_2, p);
+            initArraysTe(_tabDepth, _tabParents, x[7], y[7], stride, w_2, h_2, p);
+    }
+}
+
+void triangleEdgeCPU(unsigned char * data, int x0, int y0, int stride, int sx, int sy, int p) {
+	int niveau = 1;
+	
+    int w_2 = sx >> 1, h_2 = sy >> 1, j;
+    int x[9] = { x0, x0 + sx, x0 + sx,
+    x0, x0 + w_2, x0 + sx, x0 + w_2,
+    x0, x0 + w_2 };
+    int y[9] = { y0,
+    y0, y0 + sy, y0 + sy,
+    y0, y0 + h_2, y0 + sy, y0 + h_2, y0 + h_2 };
+
+    for(int i = 0, i1 = 1; i < 4; ++i, i1 = (i1 + 1) % 4) {
+        if(data[j = y[i + 4] * stride + x[i + 4]]) continue;
+            data[j] = ((int)data[y[i] * stride + x[i]] +
+            data[y[i1] * stride + x[i1]]) >> 1;
+        }
+        if(!data[j = y[8] * stride + x[8]]) {
+            int v = 0;
+            for(int i = 0; i < 4; ++i)
+            v += data[y[i] * stride + x[i]];
+            data[j] = v >> 2;
+        }
+        if(w_2 > 1) {
+            triangleEdgeCPU(data, x[0], y[0], stride, w_2, h_2, ++p);
+            triangleEdgeCPU(data, x[4], y[4], stride, w_2, h_2, p);
+            triangleEdgeCPU(data, x[8], y[8], stride, w_2, h_2, p);
+            triangleEdgeCPU(data, x[7], y[7], stride, w_2, h_2, p);
+    }
+}
+
 void diamontCPU(int w, int h, unsigned char * data) {
 	int sw1 = w - 1, sw2 = sw1 >> 1;
 	int sh1 = h - 1, sh2 = sh1 >> 1;
@@ -203,7 +278,7 @@ void diamontCPU(int w, int h, unsigned char * data) {
 	}
 }
 
-__global__ void diamontImg(unsigned char * data, unsigned char * img, unsigned char * tabDepth, int4 * _tabParents, int i, int tailleTab) {
+__global__ void generateImg(unsigned char * data, unsigned char * img, unsigned char * tabDepth, int4 * _tabParents, int i, int tailleTab) {
 	int thx = blockIdx.x * blockDim.x + threadIdx.x;
 	int thy = blockIdx.y * blockDim.y + threadIdx.y;
 	int ThId = thy * tailleTab + thx;

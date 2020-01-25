@@ -18,13 +18,20 @@ int main(int argc, char ** argv){
 	char cpu[4] = "cpu";
 	char gpu[4] = "gpu";
 
+	//Algo Args
+	char *algo;
+	algo = (char *) malloc(strlen(argv[2])+1);
+	strcpy(algo, argv[2]);
+	char te[3] = "te";
+	char ds[3] = "ds";
+
 	//N arg
-	int n = atoi(argv[2]);
+	int n = atoi(argv[3]);
 
 	//Filename arg
 	char *filename;
-	filename = (char *) malloc(strlen(argv[3])+1);
-	strcpy(filename, argv[3]);
+	filename = (char *) malloc(strlen(argv[4])+1);
+	strcpy(filename, argv[4]);
 
 	int matDim = pow(2,n) + 1;
 	int nbMatEl = matDim * matDim;
@@ -35,14 +42,14 @@ int main(int argc, char ** argv){
 	data = (unsigned char *) calloc(matDim * matDim, sizeof *data);
 	data[0] = data[matDim - 1] = data[ (matDim - 1) * matDim] = data[matDim*matDim - 1] = 1;
     data[matDim / 2 * matDim + matDim / 2] = 255;
-
 	/*-------------CPU MODE--------------------*/
 
 	if(strcmp(mode,cpu) == 0){
-		//initTime();
 
-		diamontCPU(matDim, matDim, data);
-
+		initTime();
+		(strcmp(algo,te) == 0) ? triangleEdgeCPU(data,0,0, matDim, matDim-1, matDim-1, 1) : diamontCPU(matDim, matDim, data);
+		printf("%d\t%F\n", n, getTime());
+		
 		//Img
 		Mat img(matDim, matDim, CV_8UC1, Scalar(0));
 		for(int y = 0; y < matDim; y ++){
@@ -50,8 +57,7 @@ int main(int argc, char ** argv){
 				img.at<uchar>(y,x) = data[y * matDim + x];
 			}
 		}
-		//makprintf("%d\t%F\n", n, getTime());
-
+		
 		cv::imwrite(filename, img);
 	}
 
@@ -69,14 +75,19 @@ int main(int argc, char ** argv){
 		_tabParents[0].z = _tabParents[matDim - 1].z = _tabParents[(matDim - 1) * matDim].z = _tabParents[matDim * matDim-1].z = -1;
 		_tabParents[0].w = _tabParents[matDim - 1].w = _tabParents[(matDim - 1) * matDim].w = _tabParents[matDim * matDim-1].w = -1;
 		//tabDepth[matDim / 2 * matDim + matDim / 2] = 9;
+
 		/*Remplissage mat de parents et profondeur*/
-		initArrays(tabDepth, _tabParents, matDim, matDim);
+		if(strcmp(algo,ds) == 0){
+			initArraysDs(tabDepth, _tabParents, matDim, matDim);
+		} else {
+			initArraysTe(tabDepth, _tabParents, 0,0, matDim, matDim-1, matDim-1, 1);
+		}
 
 		/*Affichage profondeur*/
-		char matProfName[] = "profondeur";
-		displayMat(tabDepth, matProfName, matDim);	
-		//Img output
+		// char matProfName[] = "profondeur";
+		// displayMat(tabDepth, matProfName, matDim);	
 
+		//Img output
 		Mat img(matDim, matDim, CV_8UC1);
 		const int grayBytes = img.step * img.rows;
 		unsigned char *d_input, *d_img;
@@ -91,7 +102,6 @@ int main(int argc, char ** argv){
 		cudaMemcpy(devTabDepth, tabDepth, nbMatEl* sizeof *tabDepth, cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_tabParents, _tabParents, nbMatEl* sizeof *_tabParents, cudaMemcpyHostToDevice);
 		
-		
 		int _maxProf = maxProf(tabDepth, matDim);
 
 		int th = _maxProf;
@@ -99,22 +109,22 @@ int main(int argc, char ** argv){
 		dim3 dimBlock(th, th, 1);
 		dim3 dimGrid((matDim / dimBlock.x)+1, (matDim / dimBlock.y)+1, 1);
 		
-		//initTime();
+		initTime();
 		for(int i = 1; i<=_maxProf; i++){
-			diamontImg<<<dimGrid, dimBlock, 0>>>(devData, d_img, devTabDepth, dev_tabParents, i, matDim);
+			generateImg<<<dimGrid, dimBlock, 0>>>(devData, d_img, devTabDepth, dev_tabParents, i, matDim);
 		}
+		printf("%d\t%F\n", n, getTime());
 
 		cudaMemcpy(data, devData, nbMatEl* sizeof *data, cudaMemcpyDeviceToHost);
 		cudaMemcpy(img.ptr(), d_img, grayBytes, cudaMemcpyDeviceToHost);
 
 		cv::imwrite(filename, img);
+
+		cudaFree(devData); free(data);
+		cudaFree(devTabDepth); free(tabDepth);
 	}
 
 	// char matDatasName[] = "datas";
 	// displayMat(data, matDatasName, matDim);
-
-	cudaFree(devData); free(data);
-	cudaFree(devTabDepth); free(tabDepth);
-	
 	return 0;
 }
